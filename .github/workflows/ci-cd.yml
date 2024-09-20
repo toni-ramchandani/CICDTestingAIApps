@@ -1,0 +1,59 @@
+
+name: Giskard-CI-CD
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'data/**'
+      - 'model/**'
+      - 'giskard_validation.py'
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+    run-giskard-test-suite:
+        name: Giskard-Test-Suite
+        runs-on: ubuntu-latest
+        permissions:
+          pull-requests: write
+
+        steps:
+          - name: Checkout Code
+            uses: actions/checkout@v3
+
+          - name: Set up Python
+            uses: actions/setup-python@v4
+            with:
+              python-version: 3.9
+              cache: 'pipenv'
+
+          - name: Install dependencies
+            run: |
+              pip install --upgrade pip
+              pip install pipenv
+
+          - name: Install dependencies
+            working-directory: .
+            run: pipenv install --system --deploy
+
+          - name: Execute Giskard Test Suite
+            run: python giskard_validation.py
+
+          - name: PR comment
+            uses: actions/github-script@v6
+            with:
+              script: |
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: 'Test Suites Results:
+
+```json
+' + JSON.stringify(JSON.parse(process.env.TEST_RESULT), null, 2) + '
+```'
+                })
