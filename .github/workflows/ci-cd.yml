@@ -7,7 +7,6 @@ on:
       - 'model/**'
       - 'giskard_validation.py'
       - 'README.md'
-      
     branches:
       - main
       - feature
@@ -43,11 +42,13 @@ jobs:
       - name: Execute Giskard Test Suite
         run: python giskard_validation.py
 
-      - name: Debugging TEST_RESULT
+      - name: Sanitize TEST_RESULT
         run: |
-          echo "Raw TEST_RESULT: ${{ env.TEST_RESULT }}"
-          TEST_RESULT_ESCAPED=$(echo ${{ env.TEST_RESULT }} | sed 's/\\u201c/"/g' | sed 's/\\u201d/"/g')
-          echo "Escaped TEST_RESULT: $TEST_RESULT_ESCAPED"
+          # Safely replace Unicode characters in TEST_RESULT
+          TEST_RESULT_ESCAPED=$(echo "${TEST_RESULT}" | sed 's/\\u201c/"/g' | sed 's/\\u201d/"/g')
+          echo "Sanitized TEST_RESULT: $TEST_RESULT_ESCAPED"
+          # Export the sanitized value for further steps
+          echo "TEST_RESULT_ESCAPED=$TEST_RESULT_ESCAPED" >> $GITHUB_ENV
       
       - name: PR comment
         uses: actions/github-script@v6
@@ -56,16 +57,15 @@ jobs:
             try {
               const issue_number = context.payload.pull_request ? context.payload.pull_request.number : null;
               if (issue_number) {
-                if (!process.env.TEST_RESULT) {
-                  console.log("No TEST_RESULT found.");
+                if (!process.env.TEST_RESULT_ESCAPED) {
+                  console.log("No TEST_RESULT_ESCAPED found.");
                   return;
                 }
-                // Decode escaped characters in TEST_RESULT
-                let testResults = process.env.TEST_RESULT.replace(/\\u201c/g, '"').replace(/\\u201d/g, '"');
+                let testResults;
                 try {
-                  testResults = JSON.stringify(JSON.parse(testResults), null, 2);
+                  testResults = JSON.stringify(JSON.parse(process.env.TEST_RESULT_ESCAPED), null, 2);
                 } catch (error) {
-                  console.log("Error parsing TEST_RESULT:", error.message);
+                  console.log("Error parsing TEST_RESULT_ESCAPED:", error.message);
                   return;
                 }
                 github.rest.issues.createComment({
