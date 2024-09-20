@@ -1,4 +1,4 @@
-name: Giskard-CI-CD-pipeline
+name: Giskard-CI-CD
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
       - 'data/**'
       - 'model/**'
       - 'giskard_validation.py'
+      - 'README.md'
+      
     branches:
       - main
       - feature
@@ -43,8 +45,9 @@ jobs:
 
       - name: Debugging TEST_RESULT
         run: |
-          echo "TEST_RESULT: ${{ env.TEST_RESULT }}"
-          echo "TEST_RESULT raw content: $(echo $TEST_RESULT)"
+          echo "Raw TEST_RESULT: ${{ env.TEST_RESULT }}"
+          TEST_RESULT_ESCAPED=$(echo ${{ env.TEST_RESULT }} | sed 's/\\u201c/"/g' | sed 's/\\u201d/"/g')
+          echo "Escaped TEST_RESULT: $TEST_RESULT_ESCAPED"
       
       - name: PR comment
         uses: actions/github-script@v6
@@ -57,9 +60,10 @@ jobs:
                   console.log("No TEST_RESULT found.");
                   return;
                 }
-                let testResults;
+                // Decode escaped characters in TEST_RESULT
+                let testResults = process.env.TEST_RESULT.replace(/\\u201c/g, '"').replace(/\\u201d/g, '"');
                 try {
-                  testResults = JSON.stringify(JSON.parse(process.env.TEST_RESULT), null, 2);
+                  testResults = JSON.stringify(JSON.parse(testResults), null, 2);
                 } catch (error) {
                   console.log("Error parsing TEST_RESULT:", error.message);
                   return;
