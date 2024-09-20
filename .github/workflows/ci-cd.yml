@@ -1,13 +1,14 @@
 name: Giskard-CI-CD
 
 on:
-  pull_request:
+  push:
     paths:
       - 'data/**'
       - 'model/**'
       - 'giskard_validation.py'
     branches:
       - main
+      - feature
 
 permissions:
   contents: read
